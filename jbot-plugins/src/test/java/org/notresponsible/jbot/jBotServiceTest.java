@@ -5,7 +5,7 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 /**
- * Unit test for simple jBotService.
+ * Unit test for simple JBotService.
  */
 public class jBotServiceTest
     extends TestCase

@@ -5,7 +5,6 @@ import org.reflections.Reflections;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -17,19 +16,25 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class jBotService
+public class JBotService
 {
-	private static final Logger LOG = Logger.getLogger(jBotService.class);
+	private static final Logger LOG = Logger.getLogger(JBotService.class);
 
 	private JBotRuntimeState runtimeState = JBotRuntimeState.NEW;
 	InternalServiceThread coordinatorThread = null;
 	private Properties props = null;
 
-	public jBotService(Properties newProperties) {
+	public JBotService(Properties newProperties) {
 		this.props = newProperties;
 	}
 
 	private Map<String, IJBotPlugin> loadedPlugins = new HashMap<String, IJBotPlugin>();
+
+	public JBotRuntimeState getRuntimeState() {
+		synchronized (this) {
+			return(runtimeState);
+		}
+	}
 
 	// -1 means we've never been STARTED, anything else is the exit code of the most recent attempt to start, 0 indicates as clean shutdown.
 	// If the service is running, this value is undetermined.
@@ -48,7 +53,8 @@ public class jBotService
 		Class classToLoad = null;
 		String pluginClassName = null;
 
-		if("scan".equals(props.getProperty("PluginLoaderMethod")) == true) {
+		String pluginDirectory = props.getProperty("PluginDirectory", "");
+		if("".equals(pluginDirectory) == false) {
 			LOG.info("Loading plugins jars ... ");
 			URLClassLoader sysloader = (URLClassLoader) ClassLoader.getSystemClassLoader();
 
@@ -58,7 +64,7 @@ public class jBotService
 			// Create a Pattern object
 			final Pattern regexPattern = Pattern.compile(pattern);
 
-			Files.walk(Paths.get("..")).forEach(new Consumer<Path>() {
+			Files.walk(Paths.get(pluginDirectory)).forEach(new Consumer<Path>() {
 				@Override
 				public void accept(Path pathObj) {
 					String path = pathObj.toString();
@@ -75,18 +81,17 @@ public class jBotService
 						} catch (MalformedURLException e) {
 							e.printStackTrace();
 						}
-//					Class log4jClass = urlCl.loadClass("org.apache.log4j.Logger");
-//					urlCl.
-//					log4jClass.newInstance();
+
 						LOG.info("Loaded jar for: " + urlCl.toString());
 					}
 				}
 			});
 		}
 
-		LOG.info("Enumerating plugin interfaces ...");
+		LOG.info("Searching for plugins ...");
 		Set<Class<? extends IJBotPlugin>> modules = reflections.getSubTypesOf(IJBotPlugin.class);
 
+		LOG.info("Enumerating plugin interfaces ...");
 		for(Class<? extends IJBotPlugin> pluginModule : modules) {
 			pluginClassName = pluginModule.getCanonicalName();
 			LOG.debug("Plugin class: " + pluginClassName);
@@ -135,8 +140,8 @@ public class jBotService
 	}
 
 	private class InternalServiceThread extends Thread {
-		jBotService botService = null;
-		InternalServiceThread(jBotService hostService) {
+		JBotService botService = null;
+		InternalServiceThread(JBotService hostService) {
 			this.botService = hostService;
 		}
 
@@ -220,28 +225,46 @@ public class jBotService
 		cmdList.add(commandHandler);
 	}
 
+	public IJBotPlugin findPluginByClassName(String className) {
+		for (Map.Entry<String, IJBotPlugin> pluginEntry : loadedPlugins.entrySet()) {
+			String entryClassName = pluginEntry.getKey();
+			if(className.equals(entryClassName) == true) {
+				return(pluginEntry.getValue());
+			}
+		}
+		return(null);
+	}
+
+	public IJBotPlugin findPluginByName(String className) {
+
+		for (IJBotPlugin pluginInstance : loadedPlugins.values()) {
+			if(className.equals(pluginInstance.getPluginName()) == true) {
+				return(pluginInstance);
+			}
+		}
+		return(null);
+	}
+
 	public void processCommand(ICommandResponseMessageHandler replyHandler, String commandName,  String... args) {
-		LOG.info("Potential command incoming: " + commandName);
 		StringBuilder builder = new StringBuilder();
 		for(String s : args) {
 			builder.append(s);
 		}
-		LOG.debug("Command arguments: " + builder.toString());
 
+		boolean processed = false;
 		if(commandHandlers.containsKey(commandName) == true) {
 			ArrayList<ICommandHandler> cmdList = commandHandlers.get(commandName);
 			for(ICommandHandler iCmd : cmdList) {
+				LOG.debug("Calling command processor: " + commandName + ": " + iCmd.toString());
 				if(iCmd.processCommand(replyHandler, commandName, args) == true) {
+					processed = true;
 					// returning true means the command was handled, break out of the loop
 					break;
 				}
 			}
 		}
-
-/*		if ("die".equals(commandName) == true) {
-			this.stop();
-			replyHandler.setReply("Shutting down ...");
+		if(processed == false) {
+			LOG.info("Unhandled command: " + commandName + " args: " + builder.toString());
 		}
-*/
 	}
 }

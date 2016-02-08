@@ -7,9 +7,10 @@ import java.util.Properties;
  */
 public interface IJBotPlugin {
 	String getPluginName();
-	void prepare(Properties pluginProperties, jBotService hostService);
+	void prepare(Properties pluginProperties, JBotService hostService);
 	void start();
 	void stop();
 	boolean isRunning();
 
+	Object getPluginParameter(String parameterName);
 }

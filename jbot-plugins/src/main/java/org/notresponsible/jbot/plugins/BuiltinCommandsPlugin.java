@@ -1,11 +1,10 @@
 package org.notresponsible.jbot.plugins;
 
-import com.ullink.slack.simpleslackapi.SlackSession;
 import org.apache.log4j.Logger;
 import org.notresponsible.jbot.ICommandHandler;
 import org.notresponsible.jbot.ICommandResponseMessageHandler;
 import org.notresponsible.jbot.IJBotPlugin;
-import org.notresponsible.jbot.jBotService;
+import org.notresponsible.jbot.JBotService;
 
 import java.util.Properties;
 
@@ -16,10 +15,10 @@ public class BuiltinCommandsPlugin implements IJBotPlugin {
 	private static final Logger LOG = Logger.getLogger(BuiltinCommandsPlugin.class);
 
 	private Properties props = null;
-	jBotService jbotService = null;
+	JBotService jbotService = null;
 	boolean isRunning = false;
 
-	public void prepare(Properties pluginProperties, jBotService hostService) {
+	public void prepare(Properties pluginProperties, JBotService hostService) {
 		this.props = pluginProperties;
 		this.jbotService = hostService;
 	}
@@ -28,24 +27,27 @@ public class BuiltinCommandsPlugin implements IJBotPlugin {
 		return("BuiltinCommandsPlugin");
 	}
 
+	public Object getPluginParameter(String parameterName) {
+		return null;
+	}
+
 	public void start() {
 		isRunning = true;
 		jbotService.addCommandHandler("die", new ICommandHandler() {
 
 			public boolean processCommand(ICommandResponseMessageHandler replyHandler, String commandName, String[] args) {
-				replyHandler.setReply("Shutting down, good night.");
+				replyHandler.sendReply("Shutting down, good night.", false);
 				jbotService.stop();
 				return true;
 			}
 		});
-
 
 		jbotService.addCommandHandler("msgd", new ICommandHandler() {
 			@Override
 			public boolean processCommand(ICommandResponseMessageHandler replyHandler, String commandName, String[] args) {
 				Object internalObject = replyHandler.getEventHandle();
 				String a = internalObject.getClass().getCanonicalName();
-				replyHandler.setReply("Message class: " + a);
+				replyHandler.sendReply("Message class: " + a, true);
 				return true;
 			}
 		});

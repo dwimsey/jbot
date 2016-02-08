@@ -5,33 +5,15 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.reflections.Reflections;
-import org.reflections.scanners.SubTypesScanner;
-import org.reflections.util.ClasspathHelper;
-import org.reflections.util.ConfigurationBuilder;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.sql.*;
-import java.text.DecimalFormat;
 import java.util.*;
-import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-public class jBotServiceMain
+public class JBotServiceMain
 {
-	private static final Logger LOG = Logger.getLogger(jBotServiceMain.class);
+	private static final Logger LOG = Logger.getLogger(JBotServiceMain.class);
 
 	public static void main(String[] args) throws Exception {
 		BasicConfigurator.configure(); // Basic console output for log4j
@@ -42,7 +24,6 @@ public class jBotServiceMain
 		options.addOption("defaults", false, "Show defaults file");
 		options.addOption("nodefaults", false, "Ignore defaults file");
 		options.addOption("properties", true, "Properties file to load for configuration properties");
-		options.addOption("o", true, "Output format: csv, psv, tsv, json, sql, pretty");
 		options.addOption("P", true, "Connection profile to use, if not default.");
 		options.addOption("nc", false, "Don'coordinatorThread display rows modified counts for cleaner output.");
 
@@ -95,7 +76,7 @@ public class jBotServiceMain
 		}
 
 
-		jBotService bot = new jBotService(newProperties);
+		JBotService bot = new JBotService(newProperties);
 		bot.init();
 		bot.start();
 		bot.join();

@@ -10,7 +10,7 @@ import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 import com.ullink.slack.simpleslackapi.impl.SlackSessionFactory;
 import com.ullink.slack.simpleslackapi.listeners.SlackMessagePostedListener;
-import org.notresponsible.jbot.jBotService;
+import org.notresponsible.jbot.JBotService;
 
 import java.io.IOException;
 import java.util.*;
@@ -22,12 +22,12 @@ public class SlackBotPlugin implements IJBotPlugin {
 	private static final Logger LOG = Logger.getLogger(SlackBotPlugin.class);
 
 	private Properties props = null;
-	jBotService jbotService = null;
+	JBotService jbotService = null;
 
 	String _cmdPrefix = "!";
 	String _authToken = "No+Token+Configured";
 
-	public void prepare(Properties pluginProperties, jBotService hostService) {
+	public void prepare(Properties pluginProperties, JBotService hostService) {
 		this.props = pluginProperties;
 		this.jbotService = hostService;
 
@@ -37,6 +37,13 @@ public class SlackBotPlugin implements IJBotPlugin {
 
 	public String getPluginName() {
 		return("SlackBotPlugin");
+	}
+
+	public Object getPluginParameter(String parameterName) {
+		if("session".equals(parameterName) == true) {
+			return(session);
+		}
+		return null;
 	}
 
 	private SlackSession session = null;
@@ -57,8 +64,12 @@ public class SlackBotPlugin implements IJBotPlugin {
 						SlackSession _session = session;
 						SlackMessagePosted _event = event;
 
-						public void setReply(String basicTextResponse) {
-							_session.sendMessage(_event.getChannel(), basicTextResponse, null);
+						public void sendReply(String basicTextResponse, boolean isPrivate) {
+							if(isPrivate == true) {
+								_session.sendMessageToUser(_event.getSender(), basicTextResponse, null);
+							} else {
+								_session.sendMessage(_event.getChannel(), basicTextResponse, null);
+							}
 						}
 
 						public Object getSessionHandle() {
