@@ -1,7 +1,10 @@
-package org.notresponsible.jbot.plugins;
+package org.notresponsible.jbot.plugins.protocols;
 
 import com.ullink.slack.simpleslackapi.SlackChannel;
+import com.ullink.slack.simpleslackapi.SlackPersona;
 import com.ullink.slack.simpleslackapi.SlackUser;
+import com.ullink.slack.simpleslackapi.events.SlackConnected;
+import com.ullink.slack.simpleslackapi.listeners.SlackConnectedListener;
 import org.apache.log4j.Logger;
 import org.notresponsible.jbot.ICommandResponseMessageHandler;
 import org.notresponsible.jbot.IJBotPlugin;
@@ -18,8 +21,8 @@ import java.util.*;
 /**
  * Created by dwimsey on 2/6/16.
  */
-public class SlackBotPlugin implements IJBotPlugin {
-	private static final Logger LOG = Logger.getLogger(SlackBotPlugin.class);
+public class SlackProtocolPlugin implements IJBotPlugin {
+	private static final Logger LOG = Logger.getLogger(SlackProtocolPlugin.class);
 
 	private Properties props = null;
 	JBotService jbotService = null;
@@ -36,7 +39,7 @@ public class SlackBotPlugin implements IJBotPlugin {
 	}
 
 	public String getPluginName() {
-		return("SlackBotPlugin");
+		return("Slack");
 	}
 
 	public Object getPluginParameter(String parameterName) {
@@ -49,7 +52,13 @@ public class SlackBotPlugin implements IJBotPlugin {
 	private SlackSession session = null;
 	public void start() {
 		session = SlackSessionFactory.createWebSocketSlackSession(_authToken);
-
+		session.addSlackConnectedListener(new SlackConnectedListener() {
+			public void onEvent(SlackConnected event, SlackSession session) {
+				SlackPersona slackPersona = event.getConnectedPersona();
+				LOG.info("Slack Session Persona: Username: " + slackPersona.getUserName() + " isAdmin: " + (slackPersona.isAdmin() ? "true" : "false") + " isBot: " + (slackPersona.isBot() ? "true" : "false") + " isRestricted: " + (slackPersona.isRestricted() ? "true" : "false"));
+				LOG.warn(slackPersona.toString());
+			}
+		});
 		session.addMessagePostedListener(new SlackMessagePostedListener() {
 			@Override
 			public void onEvent(final SlackMessagePosted event, final SlackSession session) {
@@ -59,34 +68,36 @@ public class SlackBotPlugin implements IJBotPlugin {
 				String senderChannel = senderChannelObject.getName();
 				String senderMessage = event.getMessageContent();
 
+				LOG.info("<" + senderUserName + "/" + senderChannel + "> " + senderMessage);
+
+				ICommandResponseMessageHandler responseHandler = new ICommandResponseMessageHandler() {
+					SlackSession _session = session;
+					SlackMessagePosted _event = event;
+
+					public void sendReply(String basicTextResponse, boolean isPrivate) {
+						if(isPrivate == true) {
+							_session.sendMessageToUser(_event.getSender(), basicTextResponse, null);
+						} else {
+							_session.sendMessage(_event.getChannel(), basicTextResponse, null);
+						}
+					}
+
+					public Object getSessionHandle() {
+						return _session;
+					}
+
+					public Object getEventHandle() {
+						return _event;
+					}
+				};
+
+				jbotService.processRawMessage(responseHandler, null, senderMessage);
+
 				if(senderMessage.startsWith(_cmdPrefix) == true) {
-					ICommandResponseMessageHandler responseHandler = new ICommandResponseMessageHandler() {
-						SlackSession _session = session;
-						SlackMessagePosted _event = event;
-
-						public void sendReply(String basicTextResponse, boolean isPrivate) {
-							if(isPrivate == true) {
-								_session.sendMessageToUser(_event.getSender(), basicTextResponse, null);
-							} else {
-								_session.sendMessage(_event.getChannel(), basicTextResponse, null);
-							}
-						}
-
-						public Object getSessionHandle() {
-							return _session;
-						}
-
-						public Object getEventHandle() {
-							return _event;
-						}
-					};
-
 					// this is a possible command, pass it to the command processor
 					String[] parts = senderMessage.split("\\s+", 2);
 					jbotService.processCommand(responseHandler, parts[0].replaceFirst(_cmdPrefix, ""), (parts.length > 1 ? parts[1] : null));
 				}
-
-				LOG.info("<" + senderUserName + "/" + senderChannel + "> " + senderMessage);
 			}
 		});
 		try {

@@ -11,6 +11,9 @@ import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -58,7 +61,7 @@ public class JBotService
 			LOG.info("Loading plugins jars ... ");
 			URLClassLoader sysloader = (URLClassLoader) ClassLoader.getSystemClassLoader();
 
-			String pattern = "(.*)(jbot-plugin)(.*)\\.jar";
+			String pattern = "(.*)(jbot-plugin-)(.*)\\.jar";
 			pattern = props.getProperty("PluginFilenamePattern", pattern);
 
 			// Create a Pattern object
@@ -72,14 +75,14 @@ public class JBotService
 					// Now create matcher object.
 					Matcher m = regexPattern.matcher(path);
 					if (m.find()) {
-						LOG.info("Found plugin jar: " + path);
+						LOG.debug("Found plugin jar: " + path);
 
 						File f = new File(path);
 						URLClassLoader urlCl = null;
 						try {
 							urlCl = new URLClassLoader(new URL[]{f.toURL()}, System.class.getClassLoader());
 						} catch (MalformedURLException e) {
-							e.printStackTrace();
+							LOG.warn("Could not load plugin jar: " + f.toString(), e);
 						}
 
 						LOG.info("Loaded jar for: " + urlCl.toString());
@@ -139,6 +142,26 @@ public class JBotService
 		}
 	}
 
+	public Connection getBotJdbcConnection() throws ClassNotFoundException, SQLException, InvalidPropertiesFormatException {
+		String _JDBCConnectionString =  props.getProperty("JBot.ConnectionString");
+		String _JDBCDriverClass =  props.getProperty("JBot.DriverClass");
+
+		if(_JDBCConnectionString == null) {
+			throw new InvalidPropertiesFormatException("JBot.ConnectionString is missing or empty.  JBot database connection is unavailable.");
+		}
+
+		if(_JDBCConnectionString.isEmpty() == true) {
+			throw new InvalidPropertiesFormatException("JBot.ConnectionString is empty.  JBot database connection is unavailable.");
+		}
+
+		if(_JDBCDriverClass != null) {
+			// this will load the driver for connecting to DTH, in case it hasn't already been done and can not be found
+			// already on the CLASSPATH
+			Class.forName(_JDBCDriverClass);
+		}
+
+		return(DriverManager.getConnection(_JDBCConnectionString));
+	}
 	private class InternalServiceThread extends Thread {
 		JBotService botService = null;
 		InternalServiceThread(JBotService hostService) {
@@ -146,6 +169,8 @@ public class JBotService
 		}
 
 		public void run() {
+			_exitCode = 0;
+
 			LOG.info("Starting plugins ...");
 			for(Map.Entry<String, IJBotPlugin> pluginEntry : loadedPlugins.entrySet()) {
 				String className = pluginEntry.getKey();
@@ -157,6 +182,7 @@ public class JBotService
 			synchronized (this) {
 				runtimeState = JBotRuntimeState.RUNNING;
 			}
+
 			boolean keepGoing = true;
 			LOG.info("Bot is online.");
 			while (keepGoing == true)
@@ -182,23 +208,27 @@ public class JBotService
 					LOG.info(className);
 					pluginInstance.stop();
 				}
+
 				synchronized (this) {
 					this.botService.runtimeState = JBotRuntimeState.STOPPED;
 				}
 			}
 
-
-			_exitCode = 0;
-			LOG.info("jBot exiting: 0");
+			LOG.info("jBot exiting: " + _exitCode);
 		}
 	}
 
 	public void stop() {
+		this.stop(0);
+	}
+
+	public void stop(int exitCode) {
 		synchronized (this) {
 			if(this.runtimeState != JBotRuntimeState.RUNNING) {
 				throw new IllegalAccessError("Thread can not be stopped at this time, thread is not running: " + runtimeState.toString());
 			}
 			runtimeState = JBotRuntimeState.STOPPING;
+			_exitCode = exitCode;
 		}
 	}
 
@@ -213,9 +243,9 @@ public class JBotService
 	}
 
 
-	private Map<String, ArrayList<ICommandHandler>> commandHandlers = new HashMap<String, ArrayList<ICommandHandler>>();
+	private Map<String, List<ICommandHandler>> commandHandlers = new HashMap<String, List<ICommandHandler>>();
 	public void addCommandHandler(String commandName, ICommandHandler commandHandler) {
-		ArrayList<ICommandHandler> cmdList;
+		List<ICommandHandler> cmdList;
 		if(commandHandlers.containsKey(commandName) == true) {
 			cmdList = commandHandlers.get(commandName);
 		} else {
@@ -223,6 +253,11 @@ public class JBotService
 			commandHandlers.put(commandName, cmdList);
 		}
 		cmdList.add(commandHandler);
+	}
+
+	private ArrayList<ICommandHandler> rawMsgHandlers = new ArrayList<ICommandHandler>();
+	public void addRawMessageHandler(String commandName, ICommandHandler commandHandler) {
+		rawMsgHandlers.add(commandHandler);
 	}
 
 	public IJBotPlugin findPluginByClassName(String className) {
@@ -253,7 +288,7 @@ public class JBotService
 
 		boolean processed = false;
 		if(commandHandlers.containsKey(commandName) == true) {
-			ArrayList<ICommandHandler> cmdList = commandHandlers.get(commandName);
+			List<ICommandHandler> cmdList = commandHandlers.get(commandName);
 			for(ICommandHandler iCmd : cmdList) {
 				LOG.debug("Calling command processor: " + commandName + ": " + iCmd.toString());
 				if(iCmd.processCommand(replyHandler, commandName, args) == true) {
@@ -265,6 +300,18 @@ public class JBotService
 		}
 		if(processed == false) {
 			LOG.info("Unhandled command: " + commandName + " args: " + builder.toString());
+		}
+	}
+
+	public void processRawMessage(ICommandResponseMessageHandler replyHandler, String commandName,  String... args) {
+		for(ICommandHandler iCmd : rawMsgHandlers) {
+			// We call the raw message handler for every message, not trying to do a command match, thats up to the
+			// handler to deal with
+			LOG.debug("Calling raw message processor: " + commandName + ": " + iCmd.toString());
+			if(iCmd.processCommand(replyHandler, commandName, args) == true) {
+				// returning true means the command was handled, break out of the loop and do the same
+				return;
+			}
 		}
 	}
 }

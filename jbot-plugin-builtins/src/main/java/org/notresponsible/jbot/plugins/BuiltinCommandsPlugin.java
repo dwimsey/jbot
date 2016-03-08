@@ -13,7 +13,10 @@ import java.util.Properties;
  */
 public class BuiltinCommandsPlugin implements IJBotPlugin {
 	private static final Logger LOG = Logger.getLogger(BuiltinCommandsPlugin.class);
-
+	private static final int RESTART_EXIT_CODE = 27;	// this value is returned from the service executable when are
+														// stop has occurred as a response to a restart request, so the
+														// script will attempt to restart the service, which will pickup
+														// environment changes
 	private Properties props = null;
 	JBotService jbotService = null;
 	boolean isRunning = false;
@@ -34,10 +37,19 @@ public class BuiltinCommandsPlugin implements IJBotPlugin {
 	public void start() {
 		isRunning = true;
 		jbotService.addCommandHandler("die", new ICommandHandler() {
-
 			public boolean processCommand(ICommandResponseMessageHandler replyHandler, String commandName, String[] args) {
 				replyHandler.sendReply("Shutting down, good night.", false);
 				jbotService.stop();
+				return true;
+			}
+		});
+
+		jbotService.addCommandHandler("restart", new ICommandHandler() {
+			public boolean processCommand(ICommandResponseMessageHandler replyHandler, String commandName, String[] args) {
+				replyHandler.sendReply("brb, restarting ...", false);
+				// Exit code 27 can be used with the external jbot.sh/jbot.cmd scripts to restart jbot on request from
+				// a channel using this command.
+				jbotService.stop(RESTART_EXIT_CODE);
 				return true;
 			}
 		});
@@ -48,6 +60,7 @@ public class BuiltinCommandsPlugin implements IJBotPlugin {
 				Object internalObject = replyHandler.getEventHandle();
 				String a = internalObject.getClass().getCanonicalName();
 				replyHandler.sendReply("Message class: " + a, true);
+				replyHandler.sendReply("Message class: " + internalObject.getClass().getClassLoader().toString(), true);
 				return true;
 			}
 		});

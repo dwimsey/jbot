@@ -4,7 +4,6 @@
 
 	<groupId>org.notresponsible.jbot</groupId>
 	<artifactId>jbot-service</artifactId>
-	<version>1.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>jbot-service</name>
@@ -13,7 +12,7 @@
 	<parent>
 		<groupId>org.notresponsible.jbot</groupId>
 		<artifactId>jbot</artifactId>
-		<version>1.0</version>
+		<version>0.3-SNAPSHOT</version>
 	</parent>
 
 	<properties>
@@ -40,12 +39,22 @@
 		<dependency>
 			<groupId>org.notresponsible.jbot</groupId>
 			<artifactId>jbot-core</artifactId>
-			<version>1.0-SNAPSHOT</version>
+			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.notresponsible.jbot</groupId>
-			<artifactId>jbot-plugins</artifactId>
-			<version>1.0-SNAPSHOT</version>
+			<artifactId>jbot-plugin-builtins</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.notresponsible.jbot</groupId>
+			<artifactId>jbot-plugin-slack</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.notresponsible.jbot</groupId>
+			<artifactId>jbot-plugin-helloworld</artifactId>
+			<version>${project.version}</version>
 		</dependency>
 	</dependencies>
 	<build>

@@ -7,11 +7,14 @@
     <groupId>org.notresponsible.jbot</groupId>
     <artifactId>jbot</artifactId>
     <packaging>pom</packaging>
-    <version>1.0</version>
+    <version>0.3-SNAPSHOT</version>
     <name>Java Chat Bot</name>
+
     <modules>
         <module>jbot-core</module>
-        <module>jbot-plugins</module>
+		<module>jbot-plugin-slack</module>
+		<module>jbot-plugin-builtins</module>
+		<module>jbot-plugin-helloworld</module>
         <module>jbot-service</module>
     </modules>
 </project>

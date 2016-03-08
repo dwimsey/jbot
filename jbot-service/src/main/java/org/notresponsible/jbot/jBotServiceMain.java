@@ -24,8 +24,6 @@ public class JBotServiceMain
 		options.addOption("defaults", false, "Show defaults file");
 		options.addOption("nodefaults", false, "Ignore defaults file");
 		options.addOption("properties", true, "Properties file to load for configuration properties");
-		options.addOption("P", true, "Connection profile to use, if not default.");
-		options.addOption("nc", false, "Don'coordinatorThread display rows modified counts for cleaner output.");
 
 		CommandLineParser parser = new DefaultParser();
 		CommandLine line = null;
@@ -37,6 +35,7 @@ public class JBotServiceMain
 			formatter.printHelp( "jbot", options );
 			return;
 		}
+
 		if(line.hasOption("help") == true) {
 			HelpFormatter formatter = new HelpFormatter();
 			formatter.printHelp( "jbot", options );
@@ -74,7 +73,6 @@ public class JBotServiceMain
 				newProperties = PropertyResources.loadPropertiesFile(newProperties, propertiesFile);
 			}
 		}
-
 
 		JBotService bot = new JBotService(newProperties);
 		bot.init();
