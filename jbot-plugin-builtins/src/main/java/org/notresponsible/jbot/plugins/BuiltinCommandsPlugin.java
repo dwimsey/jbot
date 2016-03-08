@@ -6,6 +6,7 @@ import org.notresponsible.jbot.ICommandResponseMessageHandler;
 import org.notresponsible.jbot.IJBotPlugin;
 import org.notresponsible.jbot.JBotService;
 
+import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -61,6 +62,21 @@ public class BuiltinCommandsPlugin implements IJBotPlugin {
 				String a = internalObject.getClass().getCanonicalName();
 				replyHandler.sendReply("Message class: " + a, true);
 				replyHandler.sendReply("Message class: " + internalObject.getClass().getClassLoader().toString(), true);
+				return true;
+			}
+		});
+		jbotService.addCommandHandler("help", new ICommandHandler() {
+			@Override
+			public boolean processCommand(ICommandResponseMessageHandler replyHandler, String commandName, String[] args) {
+				Object eventObj = replyHandler.getEventHandle();
+				if(eventObj == null) {
+					return false;
+				}
+
+				replyHandler.sendReply("Available Commands: ", true);
+				for (Map.Entry<String, String> cmdEntry : jbotService.getHelpCommands().entrySet()) {
+					replyHandler.sendReply(cmdEntry.getKey(), true);
+				}
 				return true;
 			}
 		});

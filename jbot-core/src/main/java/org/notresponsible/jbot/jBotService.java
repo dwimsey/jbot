@@ -242,6 +242,15 @@ public class JBotService
 		}
 	}
 
+	public Map<String, String> getHelpCommands() {
+		Map<String, String> returnValue = new HashMap<String, String>();
+		for (Map.Entry<String, List<ICommandHandler>> cmdEntry : commandHandlers.entrySet()) {
+			String cmdName = cmdEntry.getKey();
+			String cmdHelp = "Help not yet implemented for this command.";
+			returnValue.put(cmdName, cmdHelp);
+		}
+		return returnValue;
+	}
 
 	private Map<String, List<ICommandHandler>> commandHandlers = new HashMap<String, List<ICommandHandler>>();
 	public void addCommandHandler(String commandName, ICommandHandler commandHandler) {
